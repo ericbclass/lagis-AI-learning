@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POC 顧問</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#16181d;--mute:#5b6070;--line:#e3e6ee;--red:#d23e48;--amber:#c27a0e;--green:#1f8a5b;--navy:#1e3a5f;--soft:#eef2f8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12141a;--card:#1b1e27;--ink:#eef0f5;--mute:#9aa0ae;--line:#2c303c;--soft:#222735}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+main{max-width:1180px;margin:auto;padding:24px 16px 48px}
+.eyebrow{color:var(--red);font-weight:800;letter-spacing:.12em;font-size:13px}
+h1{margin:.15em 0 .2em;font-size:28px}
+h2{font-size:19px;margin:0 0 10px}
+.sub{color:var(--mute);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+label{display:block;font-weight:700;font-size:14px;margin:10px 0 4px}
+label small{font-weight:400;color:var(--mute)}
+input,textarea,select{width:100%;font:inherit;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg);color:var(--ink)}
+textarea{min-height:58px;resize:vertical}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>*{flex:0 0 auto}
+button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:9px 18px;cursor:pointer;background:var(--navy);color:#fff}
+button.ghost{background:transparent;color:var(--navy);border:2px solid var(--navy);padding:6px 14px}
+button:disabled{opacity:.45;cursor:default}
+.keybar{display:grid;grid-template-columns:minmax(0,1fr) 220px auto;gap:10px;align-items:end}
+@media (max-width:700px){.keybar{grid-template-columns:1fr}}
+.note{font-size:13px;color:var(--mute)}
+.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+.bad{white-space:pre-wrap}
+.ans{background:var(--soft);border-radius:12px;padding:12px 14px;margin-top:12px;white-space:pre-wrap}
+.src{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;margin:4px 6px 0 0;background:var(--navy);color:#fff}
+.src.warn{background:var(--red)}
+.src.mine{background:var(--green)}
+.quote{font-size:13px;color:var(--mute);border-left:3px solid var(--line);padding-left:8px;margin:4px 0}
+table{border-collapse:collapse;width:100%}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:14px}
+th{font-size:12px;color:var(--mute)}
+.tag{font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.tag.g{color:#fff;background:var(--green)}.tag.y{color:#fff;background:var(--amber)}.tag.r{color:#fff;background:var(--red)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--navy);border-radius:50%;animation:s .7s linear infinite;vertical-align:middle}
+@keyframes s{to{transform:rotate(360deg)}}
+footer{color:var(--mute);font-size:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">單元二 · 講義 p.263–275 視覺檢驗 POC 規劃</div>
+  <h1>POC 顧問</h1>
+  <p class="sub">左邊寫你們組的 POC 構想（講義 p.265 六要素），右邊問問題。<b>顧問只看講義第五日 p.263–275 和你們的構想</b>，
+  每一句都要附出處；講義沒寫的，它會說「講義沒有寫」。</p>
+
+  <div class="card">
+    <div class="keybar">
+      <div><label>Gemini 金鑰 <small>（ai.dev 領的那把；只放在這個分頁的記憶體裡，關掉分頁就沒了，不會寫進檔案）</small></label>
+        <input id="key" type="password" autocomplete="off" placeholder="貼上 AIza… 開頭的金鑰"></div>
+      <div><label>模型 <small>（很忙時換一個）</small></label>
+        <select id="model">
+          <option value="auto">自動（忙就換下一個）</option>
+          <option>gemini-2.5-flash</option><option>gemini-1.5-flash</option><option>gemini-1.5-pro</option>
+          <option>gemini-3.6-flash</option><option>gemini-3.5-flash</option><option>gemini-flash-lite-latest</option>
+          <option>gemini-3.5-flash-lite</option><option>gemini-3.8-flash</option>
+        </select></div>
+      <div><button id="ping" class="ghost">測試連線</button></div>
+    </div>
+    <div id="pingOut" class="note" style="margin-top:8px"></div>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <div class="row" style="justify-content:space-between"><h2>① 我們組的 POC 構想</h2>
+        <button id="example" class="ghost">填入範例（膠囊）</button></div>
+      <label>工站與產品</label><input id="f-station" placeholder="例：軟膠囊外觀檢驗站／綠色軟膠囊">
+      <label>1 範圍 <small>單一工站、單一型號、檢驗項清單</small></label><textarea id="f-scope"></textarea>
+      <label>2 樣本計畫 <small>良品與各型不良各幾張、哪些批次、蒐集多久</small></label><textarea id="f-sample"></textarea>
+      <label>3 環境條件 <small>光源、治具、拍攝位置怎麼固定、怎麼記錄</small></label><textarea id="f-env"></textarea>
+      <label>4 驗收指標 <small>漏檢率、誤判率、轉人工比例的門檻與測法</small></label><textarea id="f-metric"></textarea>
+      <label>5 期間與人力 <small>測幾週、品保與產線各投入多少工時</small></label><textarea id="f-people"></textarea>
+      <label>6 決策規則 <small>達標續行、沒達標怎麼調、什麼情況停損</small></label><textarea id="f-rule"></textarea>
+      <div class="row" style="margin-top:12px"><button id="check">② POC 健檢</button><span id="checkState" class="note"></span></div>
+    </section>
+
+    <section class="card">
+      <h2>③ 問 POC 顧問</h2>
+      <textarea id="q" placeholder="例：我們的驗收指標這樣訂可以嗎？">我們的驗收指標這樣訂可以嗎？還缺什麼？</textarea>
+      <div class="row" style="margin-top:8px"><button id="ask">問</button><span id="askState" class="note"></span></div>
+      <div id="answer"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>POC 健檢結果</h2>
+    <div id="checkOut" class="note">填好左邊六格，按「② POC 健檢」。</div>
+  </section>
+
+  <footer>知識來源：常廣 AI 內訓講義 第五日 p.263–275（原文內嵌在這一頁）＋你們組填的構想。模型：<span id="mUsed">—</span>。
+  版本 u2-2026-09-22。這一頁不存任何資料；重新整理就清空。</footer>
+</main>
+
+<script>
+const HANDBOOK = {
+ "p.263": "第五日 單元二\n視覺檢驗 POC 規劃\n▪ POC 規劃原則\n▪ 與 MES、ERP 及品質系統的紀錄串接思維\n▪ 以誤判率與漏檢率設定驗收指標\n▪ 分組演練自家工站的 POC 構想",
+ "p.264": "第五日 單元二｜視覺檢驗 POC 規劃\nPOC 是驗證假設，不是縮小版上線\n▪ POC（概念驗證）回答一個問題：在公司的產品與環境條件下，此事是否可行、是否值得投入。\n▪ 常見錯誤：將 POC 當作展示辦理，選用最易辨識的樣本與最佳光源條件，數據表現良好卻無法複製。\n▪ 正確作法：以真實產線的樣本分布與環境變異進行測試，寧可數據表現不佳，也要取得真實結果。\n▸ POC 的產出是決策依據：繼續、調整、或停損，三個都是成功的 POC。",
+ "p.265": "第五日 單元二｜視覺檢驗 POC 規劃\nPOC 規劃六要素\n▪ 範圍：單一工站、單一產品型號、明確的檢驗項清單。\n▪ 樣本計畫：良品與各型不良的數量、來源批次、蒐集期間。\n▪ 環境條件：光源、治具、拍攝位置的固定與記錄。\n▪ 驗收指標：誤判率與漏檢率的門檻與測法。\n▪ 期間與人力：測試週數、品保與產線的投入工時。\n▪ 決策規則：達標續行、未達標的調整選項與停損條件。",
+ "p.266": "第五日 單元二｜視覺檢驗 POC 規劃\n驗收指標怎麼訂\n▪ 漏檢率：以已知不良樣本盲測，門檻依產品風險訂，安全相關項從嚴。\n▪ 誤判率：以良品堆抽驗，門檻依重工成本與複判人力承受度訂。\n▪ 轉人工比例：三段式下的複判佔比，決定人力配置是否可行。\n▪ 穩定性：連續數週的指標波動幅度，可反映系統對環境的敏感程度。\n▸ 指標應於開始測試前書面訂定，避免測試完成後才行解釋數據。",
+ "p.267": "第五日 單元二｜視覺檢驗 POC 規劃\n與 MES、ERP 及品質系統的串接思維\n▪ POC 階段先完成規劃，不必立即實際串接：檢驗結果未來應落於哪個系統、對應哪個批號欄位。\n▪ 最小紀錄集：時間、工站、產品、批號、判定、信心、複判結果；先以匯出檔形式落地。\n▪ 識別對齊：影像檔名與批號規則先統一，日後串接才不必重工。\n▪ 品質系統視角：不合格品處理流程如何銜接 AI 攔截的品項，先以書面推演一次。",
+ "p.268": "第五日 單元二｜視覺檢驗 POC 規劃\n環境工程常被低估\n▪ 光源與背景：多數模型準確度不足的情形，實為光影條件不穩定所致；打光治具的投資報酬率極高。\n▪ 產品呈現：擺放角度與遮蔽決定看不看得到瑕疵面，機構設計與檢驗設計要一起談。\n▪ 變異管理：換模、換料、換班的影響納入測試矩陣。\n▪ POC 期間環境變更要記錄，數字波動才有解釋依據。",
+ "p.269": "第五日 單元二｜視覺檢驗 POC 規劃\n供應商合作模式下的甲方功課\n▪ 樣本與標準是甲方資產：自己準備、自己標註或至少自己審核，不外包判斷力。\n▪ 驗收由甲方主導：指標、盲測樣本、測試腳本由品保掌握，供應商執行。\n▪ 合約要點：資料與影像的歸屬、模型更新責任、驗收未達的處理。\n· 內部應培養種子人員：具備原理與驗收知識，完訓學員即為適合人選。",
+ "p.270": "第五日 單元二｜視覺檢驗 POC 規劃\n成本與效益的粗估框架\n▪ 成本側：設備與光學、軟體或服務、樣本與標註工時、驗證與維運人力。\n▪ 效益側：檢驗人力時數、漏檢風險成本下降、全檢涵蓋率提升、追溯效率。\n▪ 粗估即可：POC 前的估算是量級判斷，精算留給 POC 之後。\n▪ 非財務效益也列：客戶稽核觀感、標準化程度、人員技能升級。",
+ "p.271": "第五日 單元二｜視覺檢驗 POC 規劃\n常見失敗型態預防\n▪ 樣本選取偏頗：僅使用易辨識樣本進行訓練與驗收，上線後遇真實分布即失效。\n▪ 指標單一：只報「準確率」，掩蓋漏檢；一律雙指標呈現。\n▪ 環境失控：POC 與量產環境不同，數字不可遷移。\n▪ 缺乏決策規則：測試完成後各自解讀，專案失去方向；應於開始測試前訂定續行與停止條件。",
+ "p.272": "第五日 單元二｜視覺檢驗 POC 規劃\n固定場景與不固定場景，難度差很多\n▪ 固定一台設備、固定相機位置、固定治具與光源、固定表單與使用流程：環境可以事先控制，辨識相對容\n易，先把環境做對就贏一半。\n▪ 不固定場景：不同客戶、不同表單、不同尺寸、不同角度、不同語言、不同拍攝品質；這時不能只靠固定\n座標、固定框框與固定規則。\n▪ 不固定場景需要逐步加入版型辨識、文字辨識、視覺理解、欄位對照、例外處理與人工確認，每多一種變\n化就多一層工。\n▪ 這正是「實驗室可行」與「現場可用」之間的距離；概念驗證階段先鎖定固定場景，是務實的起手式。\n▸ 判斷句：能控制的變數先控制掉，剩下的才交給模型處理。",
+ "p.273": "第五日 單元二｜視覺檢驗 POC 規劃\n能不能做，還要能不能一直跑\n▪ 示範時只關心「它現在能不能動」；放到產線、檢驗站或公共空間後，問題變成「它能不能連續運作一個\n月，不用每天有人去重開機」。\n▪ 系統設計因此要考慮：自動開機、程式自動啟動、斷線重連、程式異常自動重啟、硬體狀態監控、錯誤紀\n錄、遠端通知。\n▪ 這些項目與 AI 模型本身無關，卻往往是能不能真正落地的關鍵；互動展演與公共裝置的經驗很值得借鏡，\n因為觀眾會亂按、網路會斷、裝置會過熱、程式會當機。\n▪ 前端顯示裝置不一定要高規格，若運算都在伺服器端，現場只需負責顯示與輸入。\n▸ 上線前多問一句：怎麼讓系統自己活下去。",
+ "p.274": "第五日 單元二｜視覺檢驗 POC 規劃\n讓設備自己報平安：監控加通知的工作流\n▪ 每天自動檢查：螢幕正常嗎、網路正常嗎、程式正常嗎、感測器正常嗎、主機正常嗎。\n▪ 正常時透過通訊軟體機器人回報「今日設備正常運作」；異常時回報「某站檢驗裝置離線，請檢查網路或\n電源」。\n▪ 這是一個標準的「設備監控加自動通知」工作流，不需要大型 AI；感測、規則、自動化、通知四件事組合\n起來就很有價值。\n▪ 硬體的價值要與場景結合：一塊面板或一台相機本身不是答案，要問在哪些場景裡它的特性真的解決了使\n用者的問題。\n▸ 做產品時 AI 只是系統的一部分，最後要回答三件事：誰要用、在哪裡用、它能不能長時間穩定運作。",
+ "p.275": "第五日 單元二｜視覺檢驗 POC 規劃\n單元收斂：三項核心判斷\n▪ POC 驗證假設不做展示：真實分布、白紙黑字指標、明確續停規則。\n▪ 以雙指標加上轉人工比例三項數字說明可行性。\n▪ 樣本、標準與驗收由委託方掌握，供應商為執行夥伴。"
+};
+
+
+const FIELDS = [
+  ['f-scope','範圍','p.265'], ['f-sample','樣本計畫','p.265'], ['f-env','環境條件','p.265、p.268'],
+  ['f-metric','驗收指標','p.265、p.266'], ['f-people','期間與人力','p.265'], ['f-rule','決策規則','p.265、p.271'],
+];
+const PAGES = Object.keys(HANDBOOK);
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function plan() {
+  const o = {工站與產品: $('#f-station').value.trim()};
+  for (const [id, name] of FIELDS) o[name] = $('#' + id).value.trim();
+  return o;
+}
+function docs() {
+  return PAGES.map(p => `【講義 ${p}】\n${HANDBOOK[p]}`).join('\n\n');
+}
+
+// 2026-09-21 深夜實測：3.6／3.7／3.8-flash 常回 503「需求量太大」或卡到逾時，lite 版反而最穩。
+// 所以「自動」＝lite 先上（不忙時 4 秒內回），依序試，每個最多等 30 秒，第一個成功的就用。
+const CHAIN = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+async function gemini(system, user, schema) {
+  const key = $('#key').value.trim();
+  if (!key) throw new Error('先貼上 Gemini 金鑰');
+  const pick = $('#model').value;
+  const list = pick === 'auto' ? CHAIN : [pick];
+  const why = [];
+  for (const model of list) {
+    try { return await gemini1(key, model, system, user, schema); }
+    catch (e) {
+      why.push(`${model}：${e.message}`);
+      if (e.fatal) break;                 // 金鑰錯了，換模型也沒用
+      if (list.length > 1) $('#mUsed').textContent = `${model} 太忙，換下一個…`;
+    }
+  }
+  throw new Error(why.join('\n'));
+}
+async function gemini1(key, model, system, user, schema) {
+  const body = {
+    contents: [{role: 'user', parts: [{text: system + '\n\n' + user}]}],
+    generationConfig: {temperature: 0.2, responseMimeType: 'application/json', responseSchema: schema},
+  };
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 30000);
+  let r;
+  try {
+    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', headers: {'Content-Type': 'application/json', 'x-goog-api-key': key}, body: JSON.stringify(body), signal: ctl.signal});
+  } catch (e) { throw new Error(e.name === 'AbortError' ? '等了 30 秒沒回應（太忙）' : '連不上（檢查網路）'); }
+  finally { clearTimeout(timer); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const m = j.error?.message || r.statusText;
+    if (r.status === 400 && /API key/i.test(m) || r.status === 403) { const e = new Error(`金鑰不對或沒開權限（${r.status}）：${m}`); e.fatal = true; throw e; }
+    if (r.status === 429 || r.status === 503 || /demand|overloaded|quota/i.test(m)) throw new Error(`太忙或額度用完（${r.status}）`);
+    if (/no longer available/i.test(m)) throw new Error('這個模型不開放給新帳號了');
+    throw new Error(`${r.status}：${m}`);
+  }
+  $('#mUsed').textContent = model;
+  const txt = j.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+  return JSON.parse(txt);
+}
+
+const HONEST = `你是常廣公司的「POC 顧問」。你只能根據下面兩份資料回答：
+(A) 講義第五日 p.263–275 原文；(B) 學員自己填的 POC 構想。
+規則：
+1. 每一個論點都要附出處：講義寫「p.2xx」，學員構想寫欄位名稱（例如「構想：驗收指標」）。
+2. 講義沒有寫的事，in_docs 設為 false，answer 寫「講義沒有寫這件事」，並建議去問誰（講師、品保主管、供應商）。不可以用你自己的常識補。
+3. quote 必須是從原文逐字摘錄的一小段，不可以改寫。
+4. 用台灣繁體中文，口語、短句。`;
+
+$('#ask').onclick = async () => {
+  const q = $('#q').value.trim(); if (!q) return;
+  $('#ask').disabled = true; $('#askState').innerHTML = '<span class="spin"></span> 顧問在翻講義…'; $('#answer').innerHTML = '';
+  const schema = {type:'OBJECT', properties:{
+    in_docs:{type:'BOOLEAN'}, answer:{type:'STRING'},
+    sources:{type:'ARRAY', items:{type:'OBJECT', properties:{where:{type:'STRING', description:'p.2xx 或 構想：欄位名'}, quote:{type:'STRING'}}, required:['where','quote']}}},
+    required:['in_docs','answer','sources']};
+  try {
+    const t0 = performance.now();
+    const o = await gemini(HONEST, `${docs()}\n\n【學員的 POC 構想】\n${JSON.stringify(plan(), null, 1)}\n\n【問題】${q}`, schema);
+    const ms = Math.round(performance.now() - t0);
+    // 自己再驗一次出處：頁碼不在 p.263–275、或摘錄在原文找不到 → 標紅
+    const srcs = (o.sources || []).map(s => {
+      const m = /p\.?\s*(\d{3})/.exec(s.where || '');
+      if (m) {
+        const pg = 'p.' + m[1], txt = HANDBOOK[pg];
+        const ok = !!txt && txt.replace(/\s/g,'').includes((s.quote||'').replace(/\s/g,'').slice(0, 12));
+        return `<span class="src ${ok ? '' : 'warn'}">講義 ${esc(pg)}${ok ? '' : '（摘錄對不上原文）'}</span><div class="quote">${esc(s.quote)}</div>`;
+      }
+      return `<span class="src mine">${esc(s.where)}</span><div class="quote">${esc(s.quote)}</div>`;
+    }).join('');
+    $('#answer').innerHTML = `<div class="ans">${o.in_docs ? '' : '<span class="tag r">講義沒有寫</span>\n'}${esc(o.answer)}</div>${srcs || (o.in_docs ? '<p class="bad">沒有附出處 —— 這個回答不要採信。</p>' : '<p class="ok">✓ 它承認講義沒寫，沒有自己編 —— 這就是誠實條款。</p>')}`;
+    $('#askState').textContent = `${ms} ms`;
+  } catch (e) { $('#askState').innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+  $('#ask').disabled = false;
+};
+
+$('#check').onclick = async () => {
+  $('#check').disabled = true; $('#checkState').innerHTML = '<span class="spin"></span> 健檢中…';
+  const schema = {type:'OBJECT', properties:{items:{type:'ARRAY', items:{type:'OBJECT', properties:{
+    element:{type:'STRING', enum: FIELDS.map(f => f[1])}, status:{type:'STRING', enum:['寫清楚了','寫了但量不出來','沒寫']},
+    problem:{type:'STRING'}, fix:{type:'STRING'}, page:{type:'STRING'}}, required:['element','status','problem','fix','page']}}},
+    required:['items']};
+  const sys = HONEST + `\n現在的任務：逐項檢查學員構想的六要素（講義 p.265）。「量不出來」指沒有數字、門檻、張數、週數，只有形容詞（例如「盡量」「明顯」「足夠」）。
+每一項都要給：狀態、問題在哪（引用學員原句）、怎麼改（給一個有數字的改寫範例）、依據的講義頁碼。六項都要回，順序照 範圍、樣本計畫、環境條件、驗收指標、期間與人力、決策規則。`;
+  try {
+    const o = await gemini(sys, `${docs()}\n\n【學員的 POC 構想】\n${JSON.stringify(plan(), null, 1)}`, schema);
+    const cls = {'寫清楚了':'g', '寫了但量不出來':'y', '沒寫':'r'};
+    const miss = o.items.filter(x => x.status !== '寫清楚了').length;
+    $('#checkOut').innerHTML = `<p><b>${6 - miss}／6 項寫清楚了。</b>${miss ? '黃色、紅色的先補，POC 才開始得了（講義 p.266：指標要在測試前書面訂好）。' : ''}</p>
+      <table><thead><tr><th>要素</th><th>狀態</th><th>問題在哪</th><th>怎麼改</th><th>講義</th></tr></thead><tbody>${
+      o.items.map(x => `<tr><td><b>${esc(x.element)}</b></td><td><span class="tag ${cls[x.status] || 'y'}">${esc(x.status)}</span></td><td>${esc(x.problem)}</td><td>${esc(x.fix)}</td><td>${esc(x.page)}</td></tr>`).join('')}</tbody></table>`;
+    $('#checkState').textContent = '';
+  } catch (e) { $('#checkState').innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+  $('#check').disabled = false;
+};
+
+$('#ping').onclick = async () => {
+  $('#pingOut').innerHTML = '<span class="spin"></span> 測試中…';
+  try {
+    const o = await gemini('只回 JSON。', '回 {"ok":true}', {type:'OBJECT', properties:{ok:{type:'BOOLEAN'}}, required:['ok']});
+    $('#pingOut').innerHTML = o.ok ? `<span class="ok">✓ 連上了（${esc($('#model').value)}）</span>` : '<span class="bad">回應怪怪的</span>';
+  } catch (e) { $('#pingOut').innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  $('#f-station').value = '醫療器材射出成形件外觀檢驗站／胰島素注射筆外殼（透明 PC 材質）';
+  $('#f-scope').value = '單一射出成形工站、單一型號（透明筆管外殼）、檢驗項清單：流痕、黑點、縮水、銀條紋、頂白。';
+  $('#f-sample').value = '良品 1,500 張、各類不良品各 300 張（涵蓋 A、B、C 三個不同射出成形批次），蒐集期間為期 3 週。';
+  $('#f-env').value = '採用同軸背光與側向 LED 光源組合、壓克力專用定位治具，相機高度與角度以機械定位銷固定，每日溫濕度與光源亮度數值記錄於檢驗日誌。';
+  $('#f-metric').value = '安全相關瑕疵（如穿透性裂紋或嚴重縮水）漏檢率門檻 0%；一般外觀漏檢率 ≤ 0.5%；良品誤判率（重工成本考量）≤ 2.0%；轉人工複判比例 ≤ 4.0%。';
+  $('#f-people').value = '測試期 4 週；品保工程師 1 人投入 15 小時／週、射出成形技術員每週配合 5 小時協助樣本搜集與產線調校。';
+  $('#f-rule').value = '雙指標同時達標（漏檢率與誤判率合於門檻）則核准進入正式產線試量產；若未達標，針對環境光影或瑕疵定義不明進行調整並複測 2 週；若漏檢率超過 1.5% 或硬體變異無法克服則執行專案停損。';
+});
+
+$('#example').onclick = () => {
+  $('#f-station').value = '醫療器材射出成形件外觀檢驗站／胰島素注射筆外殼（透明 PC 材質）';
+  $('#f-scope').value = '單一射出成形工站、單一型號（透明筆管外殼）、檢驗項清單：流痕、黑點、縮水、銀條紋、頂白。';
+  $('#f-sample').value = '良品 1,500 張、各類不良品各 300 張（涵蓋 A、B、C 三個不同射出成形批次），蒐集期間為期 3 週。';
+  $('#f-env').value = '採用同軸背光與側向 LED 光源組合、壓克力專用定位治具，相機高度與角度以機械定位銷固定，每日溫濕度與光源亮度數值記錄於檢驗日誌。';
+  $('#f-metric').value = '安全相關瑕疵（如穿透性裂紋或嚴重縮水）漏檢率門檻 0%；一般外觀漏檢率 ≤ 0.5%；良品誤判率（重工成本考量）≤ 2.0%；轉人工複判比例 ≤ 4.0%。';
+  $('#f-people').value = '測試期 4 週；品保工程師 1 人投入 15 小時／週、射出成形技術員每週配合 5 小時協助樣本搜集與產線調校。';
+  $('#f-rule').value = '雙指標同時達標（漏檢率與誤判率合於門檻）則核准進入正式產線試量產；若未達標，針對環境光影或瑕疵定義不明進行調整並複測 2 週；若漏檢率超過 1.5% 或硬體變異無法克服則執行專案停損。';
+};
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"bd26af51d81c40b89528bc8c37cf194c","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>

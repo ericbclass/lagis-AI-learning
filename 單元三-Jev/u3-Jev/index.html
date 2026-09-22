@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>製程異常：規則式 vs Jev</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#16181d;--mute:#5b6070;--line:#e3e6ee;--red:#d23e48;--amber:#b86e0a;--green:#1f8a5b;--navy:#1e3a5f;--term:#0f1419;--termink:#c9d1d9;--edit:#eef2fa;--ex:#fdf3e1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12141a;--card:#1b1e27;--ink:#eef0f5;--mute:#9aa0ae;--line:#2c303c;--navy:#8fb3e6;--edit:#232838;--ex:#3a2e18}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+main{max-width:1500px;margin:auto;padding:20px 16px 40px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px}
+@media (max-width:1100px){main{grid-template-columns:1fr}aside{position:static!important;height:420px!important}}
+.eyebrow{color:var(--red);font-weight:800;letter-spacing:.1em;font-size:13px}
+h1{margin:.15em 0 .2em;font-size:26px}
+h2{font-size:18px;margin:0 0 8px}
+.sub{color:var(--mute);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:9px 18px;cursor:pointer;background:var(--navy);color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button{color:#12141a}}
+button.ghost{white-space:nowrap;background:transparent;color:var(--navy);border:2px solid var(--navy);padding:4px 10px;font-size:13px}
+button:disabled{opacity:.45;cursor:default}
+input[type=password],input[type=number],textarea{font:inherit;border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--bg);color:var(--ink)}
+input[type=number]{width:74px}
+textarea{width:100%;min-height:70px;resize:vertical}
+.up span{display:inline-block;font-weight:800;border:2px dashed var(--navy);color:var(--navy);border-radius:999px;padding:7px 16px;cursor:pointer}
+.up.drag span{background:var(--edit)}
+.kpi{display:flex;gap:8px;flex-wrap:wrap}
+.kpi span{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:14px}
+.rules{display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.rules label{display:flex;gap:4px;align-items:center}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:1180px;font-size:14px}
+th,td{padding:6px 7px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:12px;color:var(--mute);font-weight:700;position:sticky;top:0;background:var(--card)}
+td[contenteditable]{background:var(--edit);border-radius:6px;outline:none;cursor:text}
+td[contenteditable]:focus{box-shadow:0 0 0 2px var(--navy) inset}
+td.memo{max-width:220px;font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+tr.ex td{background:var(--ex)}
+tr.flash{animation:flash 1s}
+@keyframes flash{0%{outline:2px solid #5b8cff}100%{outline:0}}
+.tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;display:inline-block}
+.tag.alert{color:#fff;background:var(--red)}.tag.review{color:#fff;background:var(--amber)}.tag.ok{color:var(--green);border:1px solid var(--green)}
+.meter{display:inline-block;width:56px;height:8px;border-radius:9px;background:var(--line);vertical-align:middle;margin-right:5px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;transition:width .5s}
+.meter i.alert{background:var(--red)}.meter i.review{background:var(--amber)}.meter i.ok{background:var(--green)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--navy);border-radius:50%;animation:s .7s linear infinite;vertical-align:middle}
+@keyframes s{to{transform:rotate(360deg)}}
+.was{color:var(--mute);font-size:12px;text-decoration:line-through;margin-left:3px}
+.note{font-weight:700;color:var(--amber);font-size:12px}
+.hint{color:var(--mute);font-size:13px}
+.warn{color:var(--red);font-weight:700}
+aside{position:sticky;top:16px;align-self:start;height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--term);color:var(--termink);border-radius:14px;overflow:hidden}
+aside header{padding:10px 14px;font-weight:800;border-bottom:1px solid #243040}
+aside header small{display:block;font-weight:400;color:#8b96a5;font-size:12px}
+#log{flex:1;overflow:auto;padding:10px 12px;font:12px/1.5 ui-monospace,Menlo,monospace}
+#log .e{border-bottom:1px dashed #243040;padding:6px 0}
+#log .out{color:#79c0ff}#log .in{color:#7ee787}#log .err{color:#ff7b72}
+#log details summary{cursor:pointer;color:#8b96a5}
+#log pre{white-space:pre-wrap;word-break:break-all;margin:4px 0;color:#c9d1d9}
+.big{font-size:22px;font-weight:900}
+footer{color:var(--mute);font-size:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<main>
+<section>
+  <div class="eyebrow">單元三 · 講義 p.279「規則式打底、模型式加值」</div>
+  <h1>製程異常：規則式 vs Jev</h1>
+  <p class="sub">每一批同時給「人訂的配方範圍」和 Jev 判一次。<b>兩邊意見不一樣的那幾批（黃底）就是例外清單</b>（p.283），交給工程師看。</p>
+
+  <div class="card">
+    <h2>① 貼上你自己的 Jev 金鑰</h2>
+    <div class="row">
+      <input type="password" id="key" placeholder="apikey_… 或 sk-…" style="flex:1;min-width:260px" autocomplete="off">
+      <button id="test">測試金鑰</button>
+      <span id="keyMsg" class="hint">金鑰只存在這個分頁的記憶體裡，<b>不會寫進檔案</b>；重新整理就要再貼一次。</span>
+    </div>
+    <label class="hint" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="classKey">
+      用課堂備用金鑰 —— <b>註冊不了 TypeSafe 的人用這個</b>；有每分鐘次數上限，<b>下課後會關掉</b>。</label>
+  </div>
+
+  <div class="card">
+    <h2>② 資料與規則</h2>
+    <div class="row" style="margin-bottom:10px">
+      <label class="up"><input type="file" id="file" accept=".csv" hidden><span>上傳製程資料 CSV（或拖進畫面）</span></label>
+      <span id="src" class="hint">目前：沒有資料</span>
+    </div>
+    <div class="rules" id="rules"></div>
+    <p class="hint" style="margin:8px 0 0">規則式：任何一個數字跑出範圍，或不良率超過上限，就響。<b>改完範圍，表格會馬上重算</b>。</p>
+  </div>
+
+  <div class="card">
+    <h2>③ 開始判斷</h2>
+    <div class="row">
+      <button id="run">開始判斷</button>
+      <label class="hint">Jev 三段式：告警 ≥ <input type="number" id="alert" value="0.7" step="0.05" min="0" max="1"></label>
+      <label class="hint">轉人工 ≥ <input type="number" id="review" value="0.5" step="0.05" min="0" max="1"></label>
+    </div>
+    <div class="kpi" style="margin-top:10px">
+      <span>已問 <b id="kDone">0</b>／<b id="kAll">0</b></span>
+      <span>規則式響 <b id="kRule">0</b></span>
+      <span>Jev 告警 <b id="kJev">0</b></span>
+      <span style="color:var(--amber)">兩邊不一致 <b id="kEx">0</b></span>
+    </div>
+  </div>
+
+  <div class="wrap"><table>
+    <thead><tr><th>批號</th><th>機台·班·人</th><th>原料批</th><th>保養後</th><th>濕度</th>
+    <th>料溫</th><th>模溫</th><th>壓力</th><th>保壓</th><th>冷卻</th><th>產出</th><th>不良</th><th>不良率</th><th>現場紀錄</th>
+    <th>規則式</th><th>Jev 異常機率</th><th>主因候選</th><th></th><th>要不要人看</th></tr></thead>
+    <tbody id="tb"></tbody>
+  </table></div>
+  <p class="hint">藍底格子可以改（數字和現場紀錄都可以）：改完按那一列的「重問」，舊的機率會劃掉留在旁邊。</p>
+
+  <div class="card" style="margin-top:16px">
+    <h2>④ 用 Jev 檢查 AI 的回答</h2>
+    <p class="hint" style="margin-top:0">把單元二問答機器人的回答貼進來，連同它引用的原文。Jev 判「這個回答有沒有照原文講」。</p>
+    <label class="hint">原文（講義或文件的那一段）</label>
+    <textarea id="srcText">講義 p.266：漏檢率以已知不良樣本盲測，門檻依產品風險訂，安全相關項從嚴。誤判率以良品堆抽驗，門檻依重工成本與複判人力承受度訂。指標應於開始測試前書面訂定。</textarea>
+    <label class="hint">問題</label>
+    <textarea id="qText" style="min-height:40px">我們的 POC 驗收指標什麼時候訂？</textarea>
+    <label class="hint">AI 的回答</label>
+    <textarea id="aText">驗收指標可以等測試跑完、看到數字之後再決定，這樣比較有彈性。（出處：講義 p.266）</textarea>
+    <div class="row" style="margin-top:8px"><button id="checkBtn">讓 Jev 檢查</button><span id="checkAns"></span></div>
+  </div>
+
+  <footer>模型：TypeSafe Jev（jev-latest），經轉接站 jev.mileschen.dev 呼叫（Jev 不接受網頁直接呼叫；轉接站不存金鑰、不記錄內容）。
+  主因只是候選：關聯不是因果，要由工程驗證（講義 p.280）。資料為課堂合成資料。</footer>
+</section>
+
+<aside>
+  <header>通訊紀錄<small>網頁 → jev.mileschen.dev → api.typesafe.ai　每一筆都有 Jev 給的 req_ 編號</small></header>
+  <div id="log"></div>
+</aside>
+</main>
+
+<script>
+const RELAY = 'https://jev.mileschen.dev/v1/systemone';
+const RULE = {料溫:[220,235], 模溫:[180,192], 射出壓力:[65,85], 保壓時間:[2.5,3.0], 冷卻時間:[12,16]};
+let RATE_MAX = 0.06;
+const CAUSE = {melt:'料溫', mold:'模溫', pressure:'射出壓力', hold:'保壓時間', cool:'冷卻時間', material:'原料批', maint:'模具保養', humid:'環境濕度', memo:'現場異狀', none:'—'};
+const $ = s => document.querySelector(s);
+let rows = [], seq = 0;
+const ALERT = () => +$('#alert').value, REVIEW = () => +$('#review').value;
+const band = p => p >= ALERT() ? ['alert','告警'] : p >= REVIEW() ? ['review','轉人工'] : ['ok','正常'];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ── 規則 ── */
+function drawRules() {
+  $('#rules').innerHTML = Object.entries(RULE).map(([k,[lo,hi]]) =>
+    `<label>${k} <input type="number" step="0.1" data-r="${k}" data-i="0" value="${lo}">–<input type="number" step="0.1" data-r="${k}" data-i="1" value="${hi}"></label>`).join('') +
+    `<label>不良率上限 <input type="number" step="0.5" id="rateMax" value="${RATE_MAX*100}">%</label>`;
+  $('#rules').oninput = e => {
+    if (e.target.id === 'rateMax') RATE_MAX = +e.target.value / 100;
+    else if (e.target.dataset.r) RULE[e.target.dataset.r][+e.target.dataset.i] = +e.target.value;
+    rows.forEach((_, i) => render(i, false)); kpi();
+  };
+}
+function ruleCheck(r) {
+  const why = [];
+  for (const [k,[lo,hi]] of Object.entries(RULE)) if (r[k] !== undefined && r[k] !== '' && (+r[k] < lo || +r[k] > hi)) why.push(`${k} ${r[k]}`);
+  const rate = +r.不良數 / +r.產出數;
+  if (rate > RATE_MAX) why.push(`不良率 ${(rate*100).toFixed(1)}%`);
+  return {why, rate};
+}
+
+/* ── 紀錄 ── */
+function logEntry(cls, text, detail) {
+  const d = document.createElement('div'); d.className = 'e';
+  d.innerHTML = `<span class="${cls}">${new Date().toLocaleTimeString('zh-TW',{hour12:false})} ${esc(text)}</span>`;
+  if (detail) { const det = document.createElement('details'); det.innerHTML = '<summary>看原始資料</summary><pre></pre>';
+    det.querySelector('pre').textContent = JSON.stringify(detail, null, 2); d.appendChild(det); }
+  $('#log').prepend(d);
+}
+
+/* ── 呼叫 Jev（經轉接站）── */
+async function jev(state, questions, label) {
+  const key = $('#classKey').checked ? 'class' : $('#key').value.trim();
+  if (!key) { logEntry('err', '還沒貼金鑰：先在最上面貼上你的 Jev 金鑰，或勾「用課堂備用金鑰」'); throw new Error('no key'); }
+  const id = ++seq, body = {model: 'jev-latest', state, questions};
+  logEntry('out', `#${id} → 送出 ${label}`, body);
+  const t = performance.now();
+  let res;
+  try { res = await fetch(RELAY, {method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer ' + key}, body: JSON.stringify(body)}); }
+  catch (e) { logEntry('err', `#${id} ✕ 連不到轉接站（網路？）`); throw e; }
+  const ms = Math.round(performance.now() - t), rid = res.headers.get('X-Typesafe-Request-Id') || '';
+  const kk = res.headers.get('X-Relay-Key'), kind = kk === 'class' ? '課堂備用金鑰' : kk === 'own' ? '自己的金鑰' : (key === 'class' ? '課堂備用金鑰' : '自己的金鑰');
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const hint = res.status === 401 || res.status === 403 ? (key === 'class' ? '課堂備用金鑰沒開或已關閉，改貼自己的' : '金鑰不對或沒貼') : res.status === 429 ? (key === 'class' ? '備用金鑰大家共用，這分鐘用完了，等一下再試' : '太快了，等幾秒再試') : '';
+    logEntry('err', `#${id} ✕ ${res.status}（${kind}）${hint} ${j.error || j.detail?.message || ''}`, j); throw new Error(res.status);
+  }
+  logEntry('in', `#${id} ← 200 · ${ms} ms · ${j.model} · ${j.usage?.input_tokens ?? '?'} tokens · ${kind} · ${rid}`, j);
+  return j.answers;
+}
+
+const ROW_Q = {
+  abnormal: {type:'noul', instructions:'這一批是否異常、值得工程師調查？請同時考慮數字、原料批、保養天數、環境與現場紀錄。'},
+  cause: {type:'choice', instructions:'最可能的主因候選', criteria:{melt:'料溫', mold:'模溫', pressure:'射出壓力', hold:'保壓時間', cool:'冷卻時間',
+    material:'原料批有問題', maint:'模具剛保養、還沒穩', humid:'環境濕度太高', memo:'現場紀錄提到的異狀', none:'看不出明顯主因'}},
+};
+function stateOf(r, rate) {
+  const s = {}; for (const [k,v] of Object.entries(r)) if (!k.startsWith('_')) s[k] = v;
+  s.不良率 = +rate.toFixed(4);
+  s.參考 = `配方範圍：${Object.entries(RULE).map(([k,[a,b]]) => `${k} ${a}–${b}`).join('、')}；這份資料平常的不良率約 ${(normalRate()*100).toFixed(1)}%`;
+  return s;
+}
+function normalRate() {
+  const rs = rows.map(r => +r.不良數 / +r.產出數).filter(x => isFinite(x)).sort((a,b) => a-b);
+  return rs.length ? rs[Math.floor(rs.length/2)] : 0.02;
+}
+
+/* ── 表格 ── */
+const EDIT = ['料溫','模溫','射出壓力','保壓時間','冷卻時間','產出數','不良數'];
+function cell(r, k, cls='num') { return `<td class="${cls}" contenteditable data-k="${k}">${esc(r[k] ?? '')}</td>`; }
+function draw(data) {
+  rows = data; $('#kAll').textContent = rows.length;
+  $('#tb').innerHTML = rows.map((r, i) => `<tr>
+    <td class="num">${esc(r.批號)}</td><td>${esc([r.機台, r.班別, r.操作員].filter(Boolean).join('·'))}</td>
+    <td>${esc(r.原料批號 ?? '')}</td><td class="num">${esc(r.模具保養後天數 ?? '')}</td><td class="num">${esc(r.環境濕度 ?? '')}</td>
+    ${EDIT.map(k => cell(r, k)).join('')}
+    <td class="num rate"></td>${cell(r, '現場紀錄', 'memo')}
+    <td class="rule"></td><td class="jev">—</td><td class="cause"></td>
+    <td><button class="ghost" data-i="${i}">重問</button></td><td class="note"></td></tr>`).join('');
+  rows.forEach((_, i) => render(i, false)); kpi();
+}
+function readRow(i) {
+  const tr = $('#tb').children[i], r = rows[i];
+  for (const td of tr.querySelectorAll('[data-k]')) { const v = td.textContent.trim(); if (td.dataset.k === '現場紀錄' || (v !== '' && !isNaN(+v))) r[td.dataset.k] = v; }
+}
+function render(i, flash = true) {
+  const r = rows[i], tr = $('#tb').children[i], {why, rate} = ruleCheck(r);
+  tr.querySelector('.rate').textContent = isFinite(rate) ? (rate*100).toFixed(1) + '%' : '—';
+  tr.querySelector('.rule').innerHTML = why.length ? `<span class="tag alert">${esc(why.join('、'))}</span>` : `<span class="tag ok">通過</span>`;
+  const jc = tr.querySelector('.jev'), note = tr.querySelector('.note');
+  if (r._busy) { jc.innerHTML = '<span class="spin"></span> 問 Jev 中…'; return; }
+  if (r._p == null) { jc.textContent = '—'; note.textContent = ''; tr.className = ''; return; }
+  const [k, lab] = band(r._p);
+  const was = r._prev != null && Math.abs(r._prev - r._p) > 0.005 ? `<span class="was">${r._prev.toFixed(2)}</span>` : '';
+  jc.innerHTML = `<span class="meter"><i class="${k}"></i></span><b class="num">${r._p.toFixed(2)}</b>${was} <span class="tag ${k}">${lab}</span>`;
+  requestAnimationFrame(() => { const m = jc.querySelector('i'); if (m) m.style.width = (r._p*100) + '%'; });
+  tr.querySelector('.cause').textContent = CAUSE[r._cause] || r._cause || '';
+  const hit = why.length > 0; let v = '';
+  if (hit && k === 'ok') v = '規則響、Jev 說正常 → 可能誤報';
+  else if (!hit && k === 'alert') v = '規則沒抓到、Jev 說異常 → 可能漏網';
+  else if (!hit && k === 'review') v = '規則沒抓到、Jev 拿不定 → 人看一眼';
+  note.textContent = v;
+  tr.className = (v ? 'ex' : '') + (flash ? ' flash' : '');
+}
+function kpi() {
+  let done = 0, rule = 0, j = 0, ex = 0;
+  rows.forEach((r, i) => { if (ruleCheck(r).why.length) rule++; if (r._p == null) return; done++;
+    if (r._p >= ALERT()) j++; if ($('#tb').children[i].querySelector('.note').textContent) ex++; });
+  $('#kDone').textContent = done; $('#kRule').textContent = rule; $('#kJev').textContent = j; $('#kEx').textContent = ex;
+}
+async function askRow(i) {
+  const r = rows[i]; if (r._busy) return;
+  readRow(i); const {rate} = ruleCheck(r);
+  r._prev = r._p; r._busy = true; render(i);
+  try { const a = await jev(stateOf(r, rate), ROW_Q, `批號 ${r.批號}`); r._p = a.abnormal.noul; r._cause = a.cause.choice; }
+  catch { r._p = r._prev; }
+  r._busy = false; render(i); kpi();
+}
+
+/* ── CSV ── */
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const out = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i+1] === '"') { f += '"'; i++; } else if (c === '"') q = false; else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i+1] === '\n') i++; row.push(f); f = ''; if (row.some(x => x.trim())) out.push(row); row = []; }
+    else f += c;
+  }
+  if (f || row.length) { row.push(f); if (row.some(x => x.trim())) out.push(row); }
+  const head = out.shift().map(h => h.trim());
+  return {head, rows: out.map(r => Object.fromEntries(head.map((h, i) => [h, (r[i] ?? '').trim()])))};
+}
+const MAX = 150;
+function useText(text, name) {
+  const {head, rows: data} = parseCSV(text);
+  const need = ['批號','產出數','不良數'].filter(k => !head.includes(k));
+  if (need.length) { $('#src').innerHTML = `<span class="warn">這份檔案少了欄位：${need.join('、')}</span>`; return; }
+  let use = data.filter(r => +r.產出數 > 0); const cut = use.length > MAX; if (cut) use = use.slice(-MAX);
+  logEntry('in', `📄 讀進 ${name}：${data.length} 列${cut ? `，只取最後 ${MAX} 列` : ''}`);
+  $('#src').textContent = `目前：${name}（${use.length} 批）`;
+  draw(use); $('#run').textContent = '開始判斷';
+}
+
+/* ── 事件 ── */
+$('#tb').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (b) askRow(+b.dataset.i); });
+$('#tb').addEventListener('input', e => { const i = [...$('#tb').children].indexOf(e.target.closest('tr')); readRow(i); render(i, false); kpi(); });
+$('#file').onchange = e => e.target.files[0] && e.target.files[0].text().then(t => useText(t, e.target.files[0].name));
+const up = $('.up');
+document.addEventListener('dragover', e => { e.preventDefault(); up.classList.add('drag'); });
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) up.classList.remove('drag'); });
+document.addEventListener('drop', e => { e.preventDefault(); up.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) f.text().then(t => useText(t, f.name)); });
+['#alert','#review'].forEach(s => $(s).oninput = () => { rows.forEach((_, i) => render(i, false)); kpi(); });
+
+$('#test').onclick = async () => {
+  $('#keyMsg').innerHTML = '<span class="spin"></span> 測試中…';
+  try { const a = await jev('模溫 205°C，配方 180–192°C', {a:{type:'noul', instructions:'這個數字超出配方範圍嗎？'}}, '測試金鑰');
+    $('#keyMsg').innerHTML = `✅ 金鑰可以用（Jev 回 ${a.a.noul.toFixed(2)}）`; }
+  catch { $('#keyMsg').innerHTML = '<span class="warn">✕ 不行，看右邊紀錄的原因</span>'; }
+};
+$('#run').onclick = async () => {
+  if (!$('#key').value.trim() && !$('#classKey').checked) { $('#keyMsg').innerHTML = '<span class="warn">先貼金鑰（或勾課堂備用金鑰）</span>'; return; }
+  if (!rows.length) return;
+  $('#run').disabled = true; let next = 0;
+  const worker = async () => { while (next < rows.length) await askRow(next++); };
+  await Promise.all([worker(), worker(), worker()]);   // 同時問 3 批，看得到一列一列回來
+  $('#run').disabled = false; $('#run').textContent = '全部重問一次';
+};
+$('#checkBtn').onclick = async () => {
+  $('#checkBtn').disabled = true; $('#checkAns').innerHTML = '<span class="spin"></span> 問 Jev 中…';
+  try {
+    const a = await jev({原文: $('#srcText').value, 問題: $('#qText').value, AI的回答: $('#aText').value}, {
+      grounded: {type:'noul', instructions:'AI 的回答裡每一個說法，都能在原文找到依據、而且沒有跟原文相反嗎？'},
+      cited: {type:'noul', instructions:'AI 的回答有沒有標出出處（頁碼或段落）？'},
+    }, '檢查 AI 回答');
+    const g = a.grounded.noul, [k, lab] = band(g);
+    const verdict = k === 'alert' ? '可信，可以用' : k === 'review' ? '拿不定，轉人工再看一次' : '不要採信';
+    $('#checkAns').innerHTML = `有依據的機率 <b class="big num">${g.toFixed(2)}</b> <span class="tag ${k}">${verdict}</span>　有標出處：${a.cited.noul.toFixed(2)}`;
+  } catch { $('#checkAns').textContent = '失敗了，看右邊紀錄'; }
+  $('#checkBtn').disabled = false;
+};
+
+drawRules();
+// 同一個資料夾裡有示範資料就先載入（拖上 Cloudflare Drop 時一起帶上去）
+fetch('製程資料_豐富版.csv').then(r => r.ok ? r.text() : Promise.reject()).then(t => useText(t, '製程資料_豐富版.csv（示範）')).catch(() => {});
+</script>
+</body>
+</html>
