@@ -1,0 +1,6 @@
+{
+  "name": "AI 零基礎互動式教學網站",
+  "description": "專為完全新手打造的 AI 互動式學習平台。免寫程式，透過遊戲化操作、情境模擬與實戰練習，手把手掌握 Prompt、Google AI Studio、NotebookLM、地端 AI、n8n 與公司資安規範。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
